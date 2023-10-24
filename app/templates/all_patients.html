@@ -5,7 +5,10 @@
   <ul>
     {% for patient in patients %}
 
-    <li>{{patient}}</li>
+    <li>
+      {{patient.id}} {{patient.first_name}} {{patient.last_name}}
+      {{patient.email}}
+    </li>
 
     {% endfor %}
   </ul>

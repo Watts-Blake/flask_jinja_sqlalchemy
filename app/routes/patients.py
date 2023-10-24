@@ -1,7 +1,8 @@
 import sqlite3
-from flask import (Flask, render_template, redirect, Blueprint, request)
+from flask import (Flask,session, render_template, redirect, Blueprint, request)
 from ..forms.create_patient import PatientForm
 DB_FILE = '../dev.db'
+from ..models import db, Patient
 
 
 patient_routes = Blueprint('patients', __name__)
@@ -13,14 +14,10 @@ def get_all_patients():
         return redirect(f'/patients/{patiend_id}')
 
     patients = None
-    with sqlite3.connect(DB_FILE) as conn:
-        curs = conn.cursor()
-        curs.execute("SELECT * FROM patients;")
-        result = curs.fetchall()
-        if (len(result) > 0):
-            patients = result
+    all_patients = Patient.query.all()
+    if (len(all_patients) > 0):
+            patients = [patient.to_dict() for patient in all_patients]
     if patients is not None:
-            # print('line 47', patients)
             return render_template('all_patients.html', page='All Patients', sitename='Patient Tracker', patients=patients)
     else:
         return 'No Patients exist!'
@@ -28,13 +25,11 @@ def get_all_patients():
 @patient_routes.route('/<int:id>', methods=['GET'])
 def get_one_patient(id):
     patient = None
-    with sqlite3.connect(DB_FILE) as conn:
-        curs = conn.cursor()
-        curs.execute(f"SELECT * FROM patients WHERE id={id};")
-        result = curs.fetchone()
-        patient = result
+
+    result = Patient.query.filter(Patient.id == id).first()
+    patient = result
     if patient is not None:
-        return render_template("one_patient.html",patient=patient), 200
+        return render_template("one_patient.html",patient=patient.to_dict()), 200
     else:
         return render_template("one_patient.html", patient='Patient Not Found'),404
 
@@ -47,13 +42,10 @@ def get_create_patient_form():
 def post_patient():
     form = PatientForm()
     if form.validate_on_submit():
-        with sqlite3.connect(DB_FILE) as conn:
-            curs = conn.cursor()
-            curs.execute(
-        """INSERT INTO patients (first_name, last_name, email)
-        VALUES (?, ?, ?)""",
-        (form.data['first_name'], form.data['last_name'], form.data['email'])
-    )
+
+        new_patient = Patient(first_name=form.data['first_name'],last_name=form.data['last_name'], email=form.data['email'])
+        db.session.add(new_patient)
+        db.session.commit()
         return redirect('/patients')
     else:
         return render_template('create_patient.html', form=form)
